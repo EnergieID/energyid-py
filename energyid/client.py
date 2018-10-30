@@ -1,6 +1,8 @@
 import requests
 from typing import Union, Optional
 
+from .models import Group, Record, User, Meter
+
 URL = "https://api.energyid.eu/api/v1"
 
 class JSONClient:
@@ -34,30 +36,37 @@ class JSONClient:
         endpoint = 'catalogs/datasets'
         return self._request('GET', endpoint)
 
-    def get_group(self, group_id: str, **kwargs) -> dict:
+    def get_group(self, group_id: str, **kwargs) -> Group:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}'
-        return self._request('GET', endpoint, **kwargs)
+        d = self._request('GET', endpoint, **kwargs)
+        return Group(d, client=self)
 
-    def get_group_languages(self, group_id: str) -> dict:
+    def get_group_languages(self, group_id: str) -> [str]:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/languages'
         return self._request('GET', endpoint)
 
-    def get_group_records(self, group_id: str, top: int=200, skip: int=0) -> dict:
+    def get_group_records(self, group_id: str, top: int=200, skip: int=0) -> [Record]:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records'
-        return self._request('GET', endpoint, top=top, skip=skip)
+        d = self._request('GET', endpoint, top=top, skip=skip)
+        return [Record(r, client=self) for r in d]
 
-    def get_group_members(self, group_id: str, top: int=200, skip: int=0) -> dict:
+    def get_group_members(self, group_id: str, top: int=200, skip: int=0) -> [User]:
         """group_id can also be the group slug"""
-        endpoint = f'group/{group_id}/members'
-        return self._request('GET', endpoint, top=top, skip=skip)
+        endpoint = f'groups/{group_id}/members'
+        d = self._request('GET', endpoint, top=top, skip=skip)
+        return [User(u, client=self) for u in d]
 
-    def get_records_for_group_member(self, group_id: str, user_id: str) -> dict:
-        """group_id can also be the group slug"""
+    def get_records_for_group_member(self, group_id: str, user_id: str='me') -> [Record]:
+        """
+        group_id can also be the group slug
+        user_id can also be an e-mail address or simply 'me'
+        """
         endpoint = f'groups/{group_id}/members/{user_id}/records'
-        return self._request('GET', endpoint)
+        d = self._request('GET', endpoint)
+        return [Record(r, client=self) for r in d]
 
     def get_group_membership_details(self, group_id: str, record_id: str) -> dict:
         """group_id can also be the group slug"""
@@ -82,21 +91,25 @@ class JSONClient:
     def get_member(self, user_id: str='me') -> dict:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}'
-        return self._request('GET', endpoint)
+        d = self._request('GET', endpoint)
+        return User(d, client=self)
 
-    def get_member_groups(self, user_id: str='me', **kwargs) -> dict:
+    def get_member_groups(self, user_id: str='me', **kwargs) -> [Group]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/groups'
-        return self._request('GET', endpoint, **kwargs)
+        d = self._request('GET', endpoint, **kwargs)
+        return [Group(g, client=self) for g in d]
 
-    def get_member_records(self, user_id: str='me') -> dict:
+    def get_member_records(self, user_id: str='me') -> [Record]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/records'
-        return self._request('GET', endpoint)
+        d = self._request('GET', endpoint)
+        return [Record(r, client=self) for r in d]
 
     def get_meter(self, meter_id: str) -> dict:
         endpoint = f'meters/{meter_id}'
-        return self._request('GET', endpoint)
+        d = self._request('GET', endpoint)
+        return Meter(d, client=self)
 
     def get_meter_readings(self, meter_id: str, take: int=1000, skip: int=0, next_key: Optional[str]=None) -> dict:
         endpoint = f'meters/{meter_id}/readings'
@@ -113,6 +126,7 @@ class JSONClient:
     def create_meter(self, record_number: str, display_name: str, metric: str, unit: str, reading_type: str,
                      multiplier: Union[int, float]=1, **kwargs):
         endpoint = f'meters'
-        return self._request('POST', endpoint, recordNumber=record_number, displayName=display_name, metric=metric,
-                             unit=unit, readingType=reading_type, multiplier=multiplier, **kwargs)
+        d = self._request('POST', endpoint, recordNumber=record_number, displayName=display_name, metric=metric,
+                          unit=unit, readingType=reading_type, multiplier=multiplier, **kwargs)
+        return Meter(d, client=self)
 
