@@ -38,8 +38,8 @@ class Meter(Model):
         self.client.hide_meter(meter_id=self.id, hidden=hidden)
         self.update({'hidden': hidden})
 
-    def edit(self, **kwargs):
-        return self.client.edit_meter(meter_id=self.id, **kwargs)
+    def edit(self, **kwargs) -> None:
+        self.client.edit_meter(meter_id=self.id, **kwargs)
 
     def get_readings(self, **kwargs) -> dict:
         return self.client.get_meter_readings(meter_id=self.id, **kwargs)
@@ -74,15 +74,13 @@ class Record(Model):
         """group_id can also be the group slug"""
         return self.client.get_group_membership_details(group_id=group_id, record_id=self.id)
 
-    def add_to_group(self, group_id: str, identification_key: Optional[str]=None) -> dict:
+    def add_to_group(self, group_id: str, identification_key: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
-        return self.client.add_record_to_group(group_id=group_id, record_id=self.id,
-                                               identification_key=identification_key)
+        self.client.add_record_to_group(group_id=group_id, record_id=self.id, identification_key=identification_key)
 
-    def change_reference_in_group(self, group_id: str, reference: Optional[str]=None) -> dict:
+    def change_reference_in_group(self, group_id: str, reference: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
-        return self.client.change_reference_of_record_in_group(group_id=group_id, record_id=self.id,
-                                                               reference=reference)
+        self.client.change_reference_of_record_in_group(group_id=group_id, record_id=self.id, reference=reference)
 
     def remove_from_group(self, group_id: str) -> None:
         """group_id can also be the group slug"""
@@ -103,8 +101,8 @@ class Record(Model):
     def get_waste_data(self, **kwargs) -> dict:
         return self.client.get_record_waste_data(record_id=self.id, **kwargs)
 
-    def edit(self, **kwargs) -> 'Record':
-        return self.client.edit_record(record_id=self.id, **kwargs)
+    def edit(self, **kwargs) -> None:
+        self.client.edit_record(record_id=self.id, **kwargs)
 
     def delete(self) -> None:
         self.client.delete_record(record_id=self.id)
@@ -134,13 +132,11 @@ class Group(Model):
         """user_id can also be an e-mail address or simply 'me'"""
         return self.client.get_records_for_group_member(group_id=self.id, user_id=user_id)
 
-    def add_record(self, record_id: int, identification_key: Optional[str]=None) -> dict:
-        return self.client.add_record_to_group(group_id=self.id, record_id=record_id,
-                                               identification_key=identification_key)
+    def add_record(self, record_id: int, identification_key: Optional[str]=None) -> None:
+        self.client.add_record_to_group(group_id=self.id, record_id=record_id, identification_key=identification_key)
 
-    def change_reference_of_record(self, record_id: int, reference: Optional[str]=None) -> dict:
-        return self.client.change_reference_of_record_in_group(group_id=self.id, record_id=record_id,
-                                                               reference=reference)
+    def change_reference_of_record(self, record_id: int, reference: Optional[str]=None) -> None:
+        self.client.change_reference_of_record_in_group(group_id=self.id, record_id=record_id, reference=reference)
 
     def remove_record(self, record_id: int) -> None:
         self.client.remove_record_from_group(group_id=self.id, record_id=record_id)
