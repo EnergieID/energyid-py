@@ -42,9 +42,10 @@ class JSONClient:
         endpoint = 'catalogs/meters'
         return self._request('GET', endpoint)
 
-    def get_dataset_catalog(self) -> dict:
+    def get_dataset_catalog(self) -> List[str]:
         endpoint = 'catalogs/datasets'
-        return self._request('GET', endpoint)
+        d = self._request('GET', endpoint)
+        return list(d)
 
     def get_group(self, group_id: str, **kwargs) -> Group:
         """group_id can also be the group slug"""
@@ -62,6 +63,7 @@ class JSONClient:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records'
         d = self._request('GET', endpoint, top=top, skip=skip)
+        # TODO: check if this returns a record or only scopes
         return [Record(r, client=self) for r in d]
 
     def get_group_members(self, group_id: str, top: int=200, skip: int=0) -> List[User]:
@@ -100,18 +102,21 @@ class JSONClient:
         endpoint = f'groups/{group_id}/records/{record_id}'
         self._request('DELETE', endpoint)
 
+    # TODO: change to User after next deploy
     def get_member(self, user_id: str='me') -> User:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}'
         d = self._request('GET', endpoint)
         return User(d, client=self)
 
+    # TODO: change to User after next deploy
     def get_member_groups(self, user_id: str='me', **kwargs) -> List[Group]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/groups'
         d = self._request('GET', endpoint, **kwargs)
         return [Group(g, client=self) for g in d]
 
+    # TODO: change to User after next deploy
     def get_member_records(self, user_id: str='me') -> List[Record]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/records'
@@ -123,9 +128,9 @@ class JSONClient:
         d = self._request('GET', endpoint)
         return Meter(d, client=self)
 
-    def get_meter_readings(self, meter_id: str, **kwargs) -> dict:
+    def get_meter_readings(self, meter_id: str, take: int=1000, skip: int=0, nextrowkey: Optional[str]=None) -> dict:
         endpoint = f'meters/{meter_id}/readings'
-        return self._request('GET', endpoint, **kwargs)
+        return self._request('GET', endpoint, take=take, skip=skip, nextrowkey=nextrowkey)
 
     def get_meter_latest_reading(self, meter_id: str) -> dict:
         endpoint = f'meters/{meter_id}/readings/latest'

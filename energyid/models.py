@@ -5,13 +5,14 @@ from .misc import handle_skip_top_limit
 if TYPE_CHECKING:
     from .client import JSONClient
 
+
 class Model(dict):
     def __init__(self, *args, client=None, **kwargs):
         super(Model, self).__init__(*args, **kwargs)
         self.client: 'JSONClient' = client
 
     @property
-    def id(self):
+    def id(self) -> Union[str, int]:
         return self['id']
 
 
@@ -50,7 +51,7 @@ class Meter(Model):
     def get_latest_reading(self) -> dict:
         try:
             return self.client.get_meter_latest_reading(meter_id=self.id)
-        except JSONDecodeError:
+        except JSONDecodeError:  # TODO: check if API returns empty object after next deploy
             return {}
 
     def edit_reading(self, key: str, new_value: Union[int, float]) -> None:
