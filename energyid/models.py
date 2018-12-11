@@ -75,9 +75,9 @@ class Record(Model):
         """group_id can also be the group slug"""
         return self.client.get_group_membership_details(group_id=group_id, record_id=self.id)
 
-    def add_to_group(self, group_id: str, identification_key: Optional[str]=None) -> None:
+    def add_to_group(self, group_id: str, access_key: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
-        self.client.add_record_to_group(group_id=group_id, record_id=self.id, identification_key=identification_key)
+        self.client.add_record_to_group(group_id=group_id, record_id=self.id, access_key=access_key)
 
     def change_reference_in_group(self, group_id: str, reference: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
@@ -133,8 +133,8 @@ class Group(Model):
         """user_id can also be an e-mail address or simply 'me'"""
         return self.client.get_records_for_group_member(group_id=self.id, user_id=user_id)
 
-    def add_record(self, record_id: int, identification_key: Optional[str]=None) -> None:
-        self.client.add_record_to_group(group_id=self.id, record_id=record_id, identification_key=identification_key)
+    def add_record(self, record_id: int, access_key: Optional[str]=None) -> None:
+        self.client.add_record_to_group(group_id=self.id, record_id=record_id, access_key=access_key)
 
     def change_reference_of_record(self, record_id: int, reference: Optional[str]=None) -> None:
         self.client.change_reference_of_record_in_group(group_id=self.id, record_id=record_id, reference=reference)

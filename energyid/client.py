@@ -86,11 +86,10 @@ class JSONClient:
         endpoint = f'groups/{group_id}/records/{record_id}'
         return self._request('GET', endpoint)
 
-    def add_record_to_group(self, group_id: str, record_id: int, identification_key: Optional[str]=None) -> dict:
+    def add_record_to_group(self, group_id: str, record_id: int, access_key: Optional[str]=None) -> dict:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records'
-        # TODO: change recordnumber to recordID after next deploy
-        return self._request('POST', endpoint, RecordNumber=f'EA-{record_id}', IdentificationKey=identification_key)
+        return self._request('POST', endpoint, recordId=record_id, accessKey=access_key)
 
     def change_reference_of_record_in_group(self, group_id: str, record_id: int, reference: Optional[str]=None) -> dict:
         """group_id can also be the group slug"""
