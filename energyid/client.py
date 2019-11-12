@@ -1,9 +1,11 @@
 import requests
+from urllib.parse import quote
 from typing import Union, Optional, List
 
 from .models import Group, Record, User, Meter
 
 URL = "https://api.energyid.eu/api/v1"
+
 
 class JSONClient:
     def __init__(self, token: str):
@@ -21,6 +23,7 @@ class JSONClient:
         self.session.headers.update({"Authorization": f"bearer {value}"})
 
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+        endpoint = quote(endpoint)
         url = f'{URL}/{endpoint}'
         if method == 'GET':
             r = self.session.get(url, params=kwargs)
@@ -101,21 +104,18 @@ class JSONClient:
         endpoint = f'groups/{group_id}/records/{record_id}'
         self._request('DELETE', endpoint)
 
-    # TODO: change to User after next deploy
-    def get_member(self, user_id: str='me') -> User:
+    def get_member(self, user_id: str = 'me') -> User:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}'
         d = self._request('GET', endpoint)
         return User(d, client=self)
 
-    # TODO: change to User after next deploy
     def get_member_groups(self, user_id: str='me', **kwargs) -> List[Group]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/groups'
         d = self._request('GET', endpoint, **kwargs)
         return [Group(g, client=self) for g in d]
 
-    # TODO: change to User after next deploy
     def get_member_records(self, user_id: str='me') -> List[Record]:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}/records'
@@ -142,8 +142,7 @@ class JSONClient:
     def create_meter(self, record_id: int, display_name: str, metric: str, unit: str, reading_type: str,
                      **kwargs) -> Meter:
         endpoint = 'meters'
-        # TODO: change recordNumber to recordid after next deploy
-        d = self._request('POST', endpoint, recordNumber=f'EA-{record_id}', displayName=display_name, metric=metric,
+        d = self._request('POST', endpoint, recordId=f'EA-{record_id}', displayName=display_name, metric=metric,
                           unit=unit, readingType=reading_type, **kwargs)
         return Meter(d, client=self)
 
