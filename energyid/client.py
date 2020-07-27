@@ -1,6 +1,6 @@
 import requests
 from urllib.parse import quote
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 
 from .models import Group, Record, Member, Meter
 
@@ -131,6 +131,10 @@ class JSONClient:
         d = self._request('PUT', endpoint, **kwargs)
         return Meter(d, client=self)
 
+    def get_meter_data(self, meter_id: str, start: str = None, end: str = None, interval: str = None) -> Dict:
+        endpoint = f'meters/{meter_id}/data'
+        return self._request('GET', endpoint, id=meter_id, start=start, end=end, interval=interval)
+
     def get_meter_reading(self, meter_id: str, key: str) -> dict:
         endpoint = f'meters/{meter_id}/readings/{key}'
         return self._request('GET', endpoint)
@@ -160,10 +164,14 @@ class JSONClient:
         d = self._request('GET', endpoint)
         return Record(d, client=self)
 
-    def get_record_meters(self, record_id: int) -> List[Meter]:
+    def get_record_meters(self, record_id: int, filter: Dict = None) -> List[Meter]:
         endpoint = f'records/{record_id}/meters'
         d = self._request('GET', endpoint)
-        return [Meter(m, client=self) for m in d]
+        meters = [Meter(m, client=self) for m in d]
+        if filter:
+            for key in filter:
+                meters = [meter for meter in meters if meter[key] == filter[key]]
+        return meters
 
     def get_record_groups(self, record_id: int) -> List[Group]:
         endpoint = f'records/{record_id}/groups'

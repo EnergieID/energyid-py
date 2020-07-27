@@ -41,6 +41,9 @@ class Meter(Model):
     def get_reading(self, key: str) -> dict:
         return self.client.get_meter_reading(meter_id=self.id, key=key)
 
+    def get_data(self, **kwargs):
+        return self.client.get_meter_data(meter_id=self.id, **kwargs)
+
     def get_latest_reading(self) -> dict:
         try:
             return self.client.get_meter_latest_reading(meter_id=self.id)
@@ -64,6 +67,13 @@ class Meter(Model):
 
 
 class Record(Model):
+    @property
+    def id(self) -> Union[str, int]:
+        try:
+            return super(Record, self).id
+        except KeyError:
+            return self['recordId']
+
     def add_to_group(self, group_id: str, access_key: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
         self.client.add_record_to_group(group_id=group_id, record_id=self.id, access_key=access_key)
@@ -76,8 +86,8 @@ class Record(Model):
         """group_id can also be the group slug"""
         self.client.remove_record_from_group(group_id=group_id, record_id=self.id)
 
-    def get_meters(self) -> List[Meter]:
-        return self.client.get_record_meters(record_id=self.id)
+    def get_meters(self, **kwargs) -> List[Meter]:
+        return self.client.get_record_meters(record_id=self.id, **kwargs)
 
     def get_groups(self) -> List['Group']:
         return self.client.get_record_groups(record_id=self.id)
@@ -96,6 +106,11 @@ class Record(Model):
     def create_meter(self, display_name: str, metric: str, unit: str, reading_type: str, **kwargs) -> Meter:
         return self.client.create_meter(record_id=self.id, display_name=display_name, metric=metric, unit=unit,
                                         reading_type=reading_type, **kwargs)
+
+    def extend_info(self):
+        """You might get a record with limited info. Use this to extend the info"""
+        record = self.client.get_record(record_id=self.id)
+        self.update(record)
 
 
 class Group(Model):
