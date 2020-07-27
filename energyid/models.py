@@ -16,19 +16,12 @@ class Model(dict):
         return self['id']
 
 
-class User(Model):
-    def get_records_in_group(self, group_id: str) -> List['Record']:
-        """group_id can also be the group slug"""
-        return self.client.get_records_for_group_member(group_id=group_id, user_id=self.id)
-
+class Member(Model):
     def get_groups(self, filter='all') -> List['Group']:
         return self.client.get_member_groups(user_id=self.id, filter=filter)
 
     def get_records(self) -> List['Record']:
         return self.client.get_member_records(user_id=self.id)
-
-    def search_records(self, q: str, **kwargs) -> List['Record']:
-        return self.client.search_records(q=q, user_id=self.id, **kwargs)
 
 
 class Meter(Model):
@@ -71,10 +64,6 @@ class Meter(Model):
 
 
 class Record(Model):
-    def get_group_membership_details(self, group_id: str) -> dict:
-        """group_id can also be the group slug"""
-        return self.client.get_group_membership_details(group_id=group_id, record_id=self.id)
-
     def add_to_group(self, group_id: str, access_key: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
         self.client.add_record_to_group(group_id=group_id, record_id=self.id, access_key=access_key)
@@ -87,20 +76,16 @@ class Record(Model):
         """group_id can also be the group slug"""
         self.client.remove_record_from_group(group_id=group_id, record_id=self.id)
 
-    def get_properties(self) -> dict:
-        return self.client.get_record_properties(record_id=self.id)
-
     def get_meters(self) -> List[Meter]:
         return self.client.get_record_meters(record_id=self.id)
 
     def get_groups(self) -> List['Group']:
         return self.client.get_record_groups(record_id=self.id)
 
-    def get_data(self, theme: str, dataset: str, **kwargs) -> dict:
-        return self.client.get_record_data(record_id=self.id, theme=theme, dataset=dataset, **kwargs)
-
-    def get_waste_data(self, **kwargs) -> dict:
-        return self.client.get_record_waste_data(record_id=self.id, **kwargs)
+    def get_data(self, name: str, start: str = None, end: str = None, interval: str = 'day',
+                 filter: str = None, **kwargs) -> dict:
+        return self.client.get_record_data(record_id=self.id, name=name, start=start, end=end, interval=interval,
+                                           filter=filter, **kwargs)
 
     def edit(self, **kwargs) -> None:
         self.client.edit_record(record_id=self.id, **kwargs)
@@ -114,10 +99,7 @@ class Record(Model):
 
 
 class Group(Model):
-    def get_languages(self) -> List[str]:
-        return self.client.get_group_languages(group_id=self.id)
-
-    def get_members(self, amount: Optional[int]=None, chunk_size=200) -> Iterator[User]:
+    def get_members(self, amount: Optional[int]=None, chunk_size=200) -> Iterator[Member]:
         """Use amount=None to get all members"""
         members = handle_skip_top_limit(self.client.get_group_members, group_id=self.id, amount=amount,
                                         chunk_size=chunk_size)
@@ -128,10 +110,6 @@ class Group(Model):
         records = handle_skip_top_limit(self.client.get_group_records, group_id=self.id, amount=amount,
                                         chunk_size=chunk_size)
         return records
-
-    def get_records_for_member(self, user_id: str='me') -> List[Record]:
-        """user_id can also be an e-mail address or simply 'me'"""
-        return self.client.get_records_for_group_member(group_id=self.id, user_id=user_id)
 
     def add_record(self, record_id: int, access_key: Optional[str]=None) -> None:
         self.client.add_record_to_group(group_id=self.id, record_id=record_id, access_key=access_key)

@@ -2,7 +2,7 @@ import requests
 from urllib.parse import quote
 from typing import Union, Optional, List
 
-from .models import Group, Record, User, Meter
+from .models import Group, Record, Member, Meter
 
 URL = "https://api.energyid.eu/api/v1"
 
@@ -45,22 +45,11 @@ class JSONClient:
         endpoint = 'catalogs/meters'
         return self._request('GET', endpoint)
 
-    def get_dataset_catalog(self) -> List[str]:
-        endpoint = 'catalogs/datasets'
-        d = self._request('GET', endpoint)
-        return list(d)
-
     def get_group(self, group_id: str, **kwargs) -> Group:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}'
         d = self._request('GET', endpoint, **kwargs)
         return Group(d, client=self)
-
-    def get_group_languages(self, group_id: str) -> List[str]:
-        """group_id can also be the group slug"""
-        endpoint = f'groups/{group_id}/languages'
-        d = self._request('GET', endpoint)
-        return list(d)
 
     def get_group_records(self, group_id: str, top: int=200, skip: int=0) -> List[Record]:
         """group_id can also be the group slug"""
@@ -69,32 +58,18 @@ class JSONClient:
         # TODO: check if this returns a record or only scopes
         return [Record(r, client=self) for r in d]
 
-    def get_group_members(self, group_id: str, top: int=200, skip: int=0) -> List[User]:
+    def get_group_members(self, group_id: str, top: int=200, skip: int=0) -> List[Member]:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/members'
         d = self._request('GET', endpoint, top=top, skip=skip)
-        return [User(u, client=self) for u in d]
+        return [Member(u, client=self) for u in d]
 
-    def get_records_for_group_member(self, group_id: str, user_id: str='me') -> List[Record]:
-        """
-        group_id can also be the group slug
-        user_id can also be an e-mail address or simply 'me'
-        """
-        endpoint = f'groups/{group_id}/members/{user_id}/records'
-        d = self._request('GET', endpoint)
-        return [Record(r, client=self) for r in d]
-
-    def get_group_membership_details(self, group_id: str, record_id: int) -> dict:
-        """group_id can also be the group slug"""
-        endpoint = f'groups/{group_id}/records/{record_id}'
-        return self._request('GET', endpoint)
-
-    def add_record_to_group(self, group_id: str, record_id: int, access_key: Optional[str]=None) -> dict:
+    def add_record_to_group(self, group_id: str, record_id: int, access_key: Optional[str] = None) -> dict:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records'
         return self._request('POST', endpoint, recordId=record_id, accessKey=access_key)
 
-    def change_reference_of_record_in_group(self, group_id: str, record_id: int, reference: Optional[str]=None) -> dict:
+    def change_reference_of_record_in_group(self, group_id: str, record_id: int, reference: Optional[str] = None) -> dict:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records/{record_id}/reference'
         return self._request('PUT', endpoint, newReference=reference)
@@ -104,11 +79,11 @@ class JSONClient:
         endpoint = f'groups/{group_id}/records/{record_id}'
         self._request('DELETE', endpoint)
 
-    def get_member(self, user_id: str = 'me') -> User:
+    def get_member(self, user_id: str = 'me') -> Member:
         """user_id can also be an e-mail address or simply 'me'"""
         endpoint = f'members/{user_id}'
         d = self._request('GET', endpoint)
-        return User(d, client=self)
+        return Member(d, client=self)
 
     def get_member_groups(self, user_id: str='me', **kwargs) -> List[Group]:
         """user_id can also be an e-mail address or simply 'me'"""
@@ -185,10 +160,6 @@ class JSONClient:
         d = self._request('GET', endpoint)
         return Record(d, client=self)
 
-    def get_record_properties(self, record_id: int) -> dict:
-        endpoint = f'records/{record_id}/properties'
-        return self._request('GET', endpoint)
-
     def get_record_meters(self, record_id: int) -> List[Meter]:
         endpoint = f'records/{record_id}/meters'
         d = self._request('GET', endpoint)
@@ -199,13 +170,12 @@ class JSONClient:
         d = self._request('GET', endpoint)
         return [Group(g, client=self) for g in d]
 
-    def get_record_data(self, record_id: int, theme: str, dataset: str, **kwargs) -> dict:
-        endpoint = f'records/{record_id}/data/{theme}/{dataset}'
-        return self._request('GET', endpoint, **kwargs)
-
-    def get_record_waste_data(self, record_id: int, **kwargs) -> dict:
-        endpoint = f'records/{record_id}/data/waste'
-        return self._request('GET', endpoint, **kwargs)
+    def get_record_data(self, record_id: int, name: str, start: str = None, end: str = None,
+                        interval: str = 'day', filter: str = None, **kwargs) -> dict:
+        endpoint = f'records/{record_id}/data/{name}'
+        if filter:
+            endpoint = f'{endpoint}/{filter}'
+        return self._request('GET', endpoint, start=start, end=end, interval=interval, **kwargs)
 
     def create_record(self, name: str, city: str, postalcode: str, country: str, record_type: str, category: str,
                       heating_on: str, auxiliary_heating_on: str, hot_water_on: str, cooking_on: str,
@@ -230,8 +200,3 @@ class JSONClient:
         endpoint = 'search/groups'
         d = self._request('GET', endpoint, q=q, **kwargs)
         return [Group(g, client=self) for g in d]
-
-    def search_records(self, q: str, user_id: str='me', **kwargs) -> List[Record]:
-        endpoint = 'search/records'
-        d = self._request('GET', endpoint, q=q, user=user_id, **kwargs)
-        return [Record(r, client=self) for r in d]
