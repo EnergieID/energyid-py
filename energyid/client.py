@@ -1,17 +1,71 @@
+from enum import Enum
+from functools import wraps
+
 import requests
 from urllib.parse import quote
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Set
+import datetime as dt
 
 from .models import Group, Record, Member, Meter
 
 URL = "https://api.energyid.eu/api/v1"
+AUTH_URL = 'https://identity.energyid.eu/connect/token'
 
 
-class JSONClient:
-    def __init__(self, token: str):
-        self._token = token
-        self.session = requests.Session()
-        self.session.headers.update({"Authorization": f"bearer {token}"})
+class Scope(Enum):
+    RECORDS_WRITE = 'records:write'
+    RECORDS_READ = 'records:read'
+    PROFILE_WRITE = 'profile:write'
+    PROFILE_READ = 'profile:read'
+    GROUPS_WRITE = 'groups:write'
+    GROUPS_READ= 'groups:read'
+
+
+def authenticated(func):
+    """
+    Decorator to check if access token has expired.
+    If it has, use the refresh token to request a new access token
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if self.token is None:
+            raise PermissionError('You haven\'t authenticated yet!')
+        if self._refresh_token is not None and \
+           self._token_expiration_time <= dt.datetime.utcnow():
+            self.re_authenticate()
+        return func(*args, **kwargs)
+    return wrapper
+
+
+class BaseClient:
+    def __init__(self, client_id: str, client_secret: str):
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._token = None
+        self._refresh_token = None
+        self._token_expiration_time = None
+        self._session = requests.Session()
+
+    def authenticate(self, username: str, password: str,
+                     scopes: Set[Scope] = (Scope.RECORDS_READ, Scope.PROFILE_READ, Scope.GROUPS_READ)):
+        data = {'grant_type': 'password', 'username': username, 'password': password,
+                'scope': ' '.join(scope.value for scope in scopes) + ' offline_access'}
+        self._auth_request(data=data)
+
+    def _re_authenticate(self):
+        data = {'grant_type': 'refresh_token', 'refresh_token': self._refresh_token}
+        self._auth_request(data=data)
+
+    def _auth_request(self, data: Dict):
+        self._session.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data.update({'client_id': self._client_id, 'client_secret': self._client_secret})
+        r = self._session.post(url=AUTH_URL, data=data)
+        r.raise_for_status()
+        response = r.json()
+        self.token = response['access_token']
+        self._refresh_token = response.get('refresh_token')
+        self._set_token_expiration_time(expires_in=response['expires_in'])
 
     @property
     def token(self):
@@ -20,19 +74,24 @@ class JSONClient:
     @token.setter
     def token(self, value):
         self._token = value
-        self.session.headers.update({"Authorization": f"bearer {value}"})
+        self._session.headers.update({"Authorization": f"bearer {value}"})
 
+    def _set_token_expiration_time(self, expires_in):
+        self._token_expiration_time = dt.datetime.utcnow() + \
+                                      dt.timedelta(0, expires_in)  # timedelta(days, seconds)
+
+    @authenticated
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
         endpoint = quote(endpoint)
         url = f'{URL}/{endpoint}'
         if method == 'GET':
-            r = self.session.get(url, params=kwargs)
+            r = self._session.get(url, params=kwargs)
         elif method == 'POST':
-            r = self.session.post(url, data=kwargs)
+            r = self._session.post(url, data=kwargs)
         elif method == 'PUT':
-            r = self.session.put(url, data=kwargs)
+            r = self._session.put(url, data=kwargs)
         elif method == 'DELETE':
-            r = self.session.delete(url)
+            r = self._session.delete(url)
             r.raise_for_status()
             return {}
         else:
@@ -41,6 +100,8 @@ class JSONClient:
         j = r.json()
         return j
 
+
+class JSONClient(BaseClient):
     def get_meter_catalog(self) -> dict:
         endpoint = 'catalogs/meters'
         return self._request('GET', endpoint)
@@ -208,3 +269,11 @@ class JSONClient:
         endpoint = 'search/groups'
         d = self._request('GET', endpoint, q=q, **kwargs)
         return [Group(g, client=self) for g in d]
+
+
+class SimpleJSONClient(JSONClient):
+    """Simplified Client, for if you only have a token"""
+    def __init__(self, token: str):
+        # noinspection PyTypeChecker
+        super(SimpleJSONClient, self).__init__(client_id=None, client_secret=None)
+        self.token = token
