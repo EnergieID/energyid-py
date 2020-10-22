@@ -1,3 +1,4 @@
+import functools
 from enum import Enum
 from functools import wraps
 
@@ -81,6 +82,7 @@ class BaseClient:
                                       dt.timedelta(0, expires_in)  # timedelta(days, seconds)
 
     @authenticated
+    @functools.lru_cache(maxsize=128, typed=False)
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
         endpoint = quote(endpoint)
         url = f'{URL}/{endpoint}'
