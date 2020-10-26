@@ -1,5 +1,6 @@
 from typing import Optional, Union, Iterator, List, TYPE_CHECKING
 from json import JSONDecodeError
+import pandas as pd
 
 from .misc import handle_skip_top_limit
 if TYPE_CHECKING:
@@ -74,6 +75,22 @@ class Record(Model):
         except KeyError:
             return self['recordId']
 
+    @property
+    def timezone(self) -> str:
+        try:
+            return self['timeZone']
+        except KeyError:
+            self.extend_info()
+            return self['timeZone']
+
+    @property
+    def number(self) -> str:
+        try:
+            return self['recordNumber']
+        except KeyError:
+            self.extend_info()
+            return self['recordNumber']
+
     def add_to_group(self, group_id: str, access_key: Optional[str]=None) -> None:
         """group_id can also be the group slug"""
         self.client.add_record_to_group(group_id=group_id, record_id=self.id, access_key=access_key)
@@ -92,10 +109,11 @@ class Record(Model):
     def get_groups(self) -> List['Group']:
         return self.client.get_record_groups(record_id=self.id)
 
-    def get_data(self, name: str, start: str = None, end: str = None, interval: str = 'day',
-                 filter: str = None, **kwargs) -> dict:
-        return self.client.get_record_data(record_id=self.id, name=name, start=start, end=end, interval=interval,
-                                           filter=filter, **kwargs)
+    def get_data(self, name: str, start: str = None, end: str = None,
+                 interval: str = 'day', filter: str = None, **kwargs) -> dict:
+        return self.client.get_record_data(
+            record_id=self.id, name=name, start=start, end=end,
+            interval=interval, filter=filter, **kwargs)
 
     def edit(self, **kwargs) -> None:
         self.client.edit_record(record_id=self.id, **kwargs)
@@ -134,3 +152,16 @@ class Group(Model):
 
     def remove_record(self, record_id: int) -> None:
         self.client.remove_record_from_group(group_id=self.id, record_id=record_id)
+
+    def get_individual_data(self, name: str, start: str = None, end: str = None,
+                 interval: str = 'day', filter: str = None, **kwargs):
+        def _gen_data():
+            for record in self.get_records(**kwargs):
+                ts = record.get_data(name=name, start=start, end=end,
+                                     interval=interval, filter=filter, **kwargs)
+                ts.name = record.number
+                yield ts
+        data = _gen_data()
+        data = (ts for ts in data if not ts.empty)
+        df = pd.concat(data, axis=1)
+        return df

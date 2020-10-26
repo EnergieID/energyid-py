@@ -1,5 +1,8 @@
+from typing import Optional
+
 import pandas as pd
 
+from .models import Record
 from .client import JSONClient
 
 
@@ -26,13 +29,30 @@ class PandasClient(JSONClient):
             return pd.Series(name=meter_id)
         return df
 
-    def get_record_data(self, record_id: int, theme: str, dataset: str, **kwargs) -> pd.Series:
-        d = super(PandasClient, self).get_record_data(record_id=record_id, theme=theme, dataset=dataset, **kwargs)
-        df = pd.DataFrame(d)
-        df['key'] = pd.DatetimeIndex(df['key'])
-        df.set_index('key', inplace=True)
+    def get_record_data(
+            self, record_id: int, name: str, start: str = None, end: str = None,
+            interval: str = 'day', filter: str = None,
+            record: Optional[Record] = None, **kwargs) -> pd.Series:
+        d = super(PandasClient, self).get_record_data(
+            record_id=record_id, name=name, start=start, end=end,
+            interval=interval, filter=filter, **kwargs)
+        if len(d['value'][0]['data']) == 0:
+            return pd.Series(name=name)
+        df = pd.DataFrame(d['value'][0]['data'])
+        df.set_index('timestamp', inplace=True)
+        # noinspection PyTypeChecker
+        df.index = pd.to_datetime(df.index, utc=True)
+        df.index = pd.DatetimeIndex(df.index)
         df.sort_index(inplace=True)
-        ts = df['value']
+
+        if record is None:
+            record = self.get_record(record_id=record_id)
+        df = df.tz_convert(record.timezone)
+
+        if isinstance(df.squeeze(), pd.Series):
+            ts = df.squeeze()
+        else:
+            return pd.Series(name=name)
         ts.index.name = None
-        ts.name = dataset
+        ts.name = name
         return ts
