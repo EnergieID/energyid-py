@@ -165,3 +165,12 @@ class Group(Model):
         data = (ts for ts in data if not ts.empty)
         df = pd.concat(data, axis=1)
         return df
+
+    def get_records_dataframe(self, amount: Optional[int]=None) -> pd.DataFrame:
+        records = self.get_records(amount=amount)
+        record_list = []
+        for record in records:
+            record.extend_info()
+            record_list.append(record)
+        df = pd.DataFrame.from_dict(record_list)
+        return df
