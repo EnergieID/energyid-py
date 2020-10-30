@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Union, List
 
 import pandas as pd
 
@@ -32,22 +32,36 @@ class PandasClient(JSONClient):
     def get_record_data(
             self, record_id: int, name: str, start: str = None, end: str = None,
             interval: str = 'day', filter: str = None,
-            record: Optional[Record] = None, **kwargs) -> pd.Series:
+            record: Optional[Record] = None,
+            **kwargs) -> Union[pd.Series, pd.DataFrame]:
         d = super(PandasClient, self).get_record_data(
             record_id=record_id, name=name, start=start, end=end,
             interval=interval, filter=filter, **kwargs)
-        if len(d['value'][0]['data']) == 0:
+        values = d['value'][0]
+        if 'data' in values:
+            # single column
+            data = self._parse_single_series(values['data'], name=name)
+        elif 'series' in values:
+            data = self._parse_multiple_series(values['series'], name=name)
+        else:
+            raise ValueError('Data block not found')
+
+        if record is None:
+            record = self.get_record(record_id=record_id)
+        data = data.tz_convert(record.timezone)
+
+        return data
+
+    @staticmethod
+    def _parse_single_series(d: Dict, name: Optional[str] = None) -> pd.Series:
+        if len(d) == 0:
             return pd.Series(name=name)
-        df = pd.DataFrame(d['value'][0]['data'])
+        df = pd.DataFrame(d)
         df.set_index('timestamp', inplace=True)
         # noinspection PyTypeChecker
         df.index = pd.to_datetime(df.index, utc=True)
         df.index = pd.DatetimeIndex(df.index)
         df.sort_index(inplace=True)
-
-        if record is None:
-            record = self.get_record(record_id=record_id)
-        df = df.tz_convert(record.timezone)
 
         if isinstance(df.squeeze(), pd.Series):
             ts = df.squeeze()
@@ -56,3 +70,17 @@ class PandasClient(JSONClient):
         ts.index.name = None
         ts.name = name
         return ts
+
+    def _parse_multiple_series(self, d: List[Dict],
+                               name: Optional[str] = None) -> pd.DataFrame:
+        series_list = []
+        for series in d:
+            ts = self._parse_single_series(series['data'], name=series['name'])
+            if ts.empty:
+                continue
+            ts.name = (name, ts.name)
+            series_list.append(ts)
+        if len(series_list) == 0:
+            return pd.DataFrame()
+        df = pd.concat(series_list, axis=1)
+        return df

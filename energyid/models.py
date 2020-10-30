@@ -157,12 +157,18 @@ class Group(Model):
                  interval: str = 'day', filter: str = None, **kwargs):
         def _gen_data():
             for record in self.get_records(**kwargs):
-                ts = record.get_data(name=name, start=start, end=end,
+                data = record.get_data(name=name, start=start, end=end,
                                      interval=interval, filter=filter, **kwargs)
-                ts.name = record.number
-                yield ts
+                if data.empty:
+                    continue
+
+                if isinstance(data, pd.Series):
+                    data.name = record.number
+                else:  # pd.DataFrame
+                    data.columns.set_levels([record.number], level=0,
+                                            inplace=True)
+                yield data
         data = _gen_data()
-        data = (ts for ts in data if not ts.empty)
         df = pd.concat(data, axis=1)
         return df
 
