@@ -155,7 +155,7 @@ class Group(Model):
     def remove_record(self, record_id: int) -> None:
         self.client.remove_record_from_group(group_id=self.id, record_id=record_id)
 
-    def get_individual_data(self, name: str, start: str = None, end: str = None,
+    def get_individual_data(self, name: str, start: str, end: str,
                  interval: str = 'day', filter: str = None, **kwargs):
         def _gen_data():
             for record in self.get_records(**kwargs):
