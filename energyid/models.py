@@ -1,4 +1,4 @@
-from typing import Optional, Union, Iterator, List, TYPE_CHECKING
+from typing import Optional, Union, Iterator, List, TYPE_CHECKING, Dict
 from json import JSONDecodeError
 import pandas as pd
 
@@ -109,7 +109,7 @@ class Record(Model):
     def get_groups(self) -> List['Group']:
         return self.client.get_record_groups(record_id=self.id)
 
-    def get_data(self, name: str, start: str = None, end: str = None,
+    def get_data(self, name: str, start: str, end: str,
                  interval: str = 'day', filter: str = None, **kwargs) -> dict:
         return self.client.get_record_data(
             record_id=self.id, name=name, start=start, end=end,
@@ -130,6 +130,8 @@ class Record(Model):
         record = self.client.get_record(record_id=self.id)
         self.update(record)
 
+    def get_definitions(self) -> List[Dict]:
+        return self.client.get_record_definitions(record_id=self.id)
 
 class Group(Model):
     def get_members(self, amount: Optional[int]=None, chunk_size=200) -> Iterator[Member]:

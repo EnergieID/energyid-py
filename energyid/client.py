@@ -34,7 +34,7 @@ def authenticated(func):
             raise PermissionError('You haven\'t authenticated yet!')
         if self._refresh_token is not None and \
            self._token_expiration_time <= dt.datetime.utcnow():
-            self.re_authenticate()
+            self._re_authenticate()
         return func(*args, **kwargs)
     return wrapper
 
@@ -82,16 +82,17 @@ class BaseClient:
                                       dt.timedelta(0, expires_in)  # timedelta(days, seconds)
 
     @authenticated
-    @functools.lru_cache(maxsize=128, typed=False)
+    #@functools.lru_cache(maxsize=128, typed=False)
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+        #self._session.headers.update({'Content-Type': 'application/json'})
         endpoint = quote(endpoint)
         url = f'{URL}/{endpoint}'
         if method == 'GET':
             r = self._session.get(url, params=kwargs)
         elif method == 'POST':
-            r = self._session.post(url, data=kwargs)
+            r = self._session.post(url, params=kwargs)
         elif method == 'PUT':
-            r = self._session.put(url, data=kwargs)
+            r = self._session.put(url, params=kwargs)
         elif method == 'DELETE':
             r = self._session.delete(url)
             r.raise_for_status()
@@ -135,7 +136,7 @@ class JSONClient(BaseClient):
     def change_reference_of_record_in_group(self, group_id: str, record_id: int, reference: Optional[str] = None) -> dict:
         """group_id can also be the group slug"""
         endpoint = f'groups/{group_id}/records/{record_id}/reference'
-        return self._request('PUT', endpoint, newReference=reference)
+        return self._request('PUT', endpoint, reference=reference)
 
     def remove_record_from_group(self, group_id: str, record_id: int) -> None:
         """group_id can also be the group slug"""
@@ -177,12 +178,18 @@ class JSONClient(BaseClient):
         endpoint = f'meters/{meter_id}/readings'
         return self._request('POST', endpoint, value=value, timestamp=timestamp)
 
-    def create_meter(self, record_id: int, display_name: str, metric: str, unit: str, reading_type: str,
-                     **kwargs) -> Meter:
+    def _create_meter(self, **kwargs) -> Meter:
         endpoint = 'meters'
-        d = self._request('POST', endpoint, recordId=f'EA-{record_id}', displayName=display_name, metric=metric,
-                          unit=unit, readingType=reading_type, **kwargs)
+        d = self._request('POST', endpoint, **kwargs)
         return Meter(d, client=self)
+
+    def create_meter(
+            self, record_id: int, display_name: str, metric: str, unit: str,
+            reading_type: str, **kwargs) -> Meter:
+        meter = self._create_meter(
+            recordId=f'EA-{record_id}', displayName=display_name,
+            metric=metric, unit=unit, readingType=reading_type, **kwargs)
+        return meter
 
     def hide_meter(self, meter_id: str, hidden: bool=True) -> Meter:
         endpoint = f'meters/{meter_id}/hidden'
@@ -241,22 +248,28 @@ class JSONClient(BaseClient):
         d = self._request('GET', endpoint)
         return [Group(g, client=self) for g in d]
 
-    def get_record_data(self, record_id: int, name: str, start: str = None, end: str = None,
+    def get_record_data(self, record_id: int, name: str, start: str, end: str,
                         interval: str = 'day', filter: str = None, **kwargs) -> dict:
         endpoint = f'records/{record_id}/data/{name}'
-        if filter:
-            endpoint = f'{endpoint}/{filter}'
-        return self._request('GET', endpoint, start=start, end=end, interval=interval, **kwargs)
+        return self._request('GET', endpoint, start=start, end=end,
+                             filter=filter, interval=interval, **kwargs)
 
-    def create_record(self, name: str, city: str, postalcode: str, country: str, record_type: str, category: str,
-                      heating_on: str, auxiliary_heating_on: str, hot_water_on: str, cooking_on: str,
-                      **kwargs) -> Record:
+    def _create_record(self, **kwargs) -> Record:
         endpoint = 'records'
-        d = self._request('POST', endpoint, name=name, city=city, postalcode=postalcode, country=country,
-                          recordtype=record_type, category=category, heatingon=heating_on,
-                          auxiliaryheatingon=auxiliary_heating_on, hotwateron=hot_water_on, cookingon=cooking_on,
-                          **kwargs)
+        d = self._request('POST', endpoint, **kwargs)
         return Record(d, client=self)
+
+    def create_record(
+            self, display_name: str, city: str, postalcode: str, country: str,
+            record_type: str, category: str, heating_on: str,
+            auxiliary_heating_on: str, hot_water_on: str, cooking_on: str,
+            **kwargs) -> Record:
+        record = self._create_record(
+            displayname=display_name, city=city, postalcode=postalcode,
+            country=country, recordtype=record_type, category=category,
+            heatingon=heating_on, uxiliaryheatingon=auxiliary_heating_on,
+            hotwateron=hot_water_on, cookingon=cooking_on, **kwargs)
+        return record
 
     def edit_record(self, record_id: int, **kwargs) -> Record:
         endpoint = f'records/{record_id}'
@@ -271,6 +284,10 @@ class JSONClient(BaseClient):
         endpoint = 'search/groups'
         d = self._request('GET', endpoint, q=q, **kwargs)
         return [Group(g, client=self) for g in d]
+
+    def get_record_definitions(self, record_id: str) -> List[Dict]:
+        endpoint = f'records/{record_id}/definitions'
+        return self._request('GET', endpoint)['data']
 
 
 class SimpleJSONClient(JSONClient):

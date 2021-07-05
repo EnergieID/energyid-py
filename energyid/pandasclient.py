@@ -30,21 +30,25 @@ class PandasClient(JSONClient):
         return df
 
     def get_record_data(
-            self, record_id: int, name: str, start: str = None, end: str = None,
+            self, record_id: int, name: str, start: str, end: str,
             interval: str = 'day', filter: str = None,
             record: Optional[Record] = None,
             **kwargs) -> Union[pd.Series, pd.DataFrame]:
         d = super(PandasClient, self).get_record_data(
             record_id=record_id, name=name, start=start, end=end,
             interval=interval, filter=filter, **kwargs)
-        values = d['value'][0]
-        if 'data' in values:
-            # single column
-            data = self._parse_single_series(values['data'], name=name)
-        elif 'series' in values:
-            data = self._parse_multiple_series(values['series'], name=name)
+        if len(d['value']) == 1:
+            values = d['value'][0]
+
+            if 'data' in values:
+                # single column
+                data = self._parse_single_series(values['data'], name=name)
+            elif 'series' in values:
+                data = self._parse_multiple_series(values['series'], name=name)
+            else:
+                raise ValueError('Data block not found')
         else:
-            raise ValueError('Data block not found')
+            data = self._parse_multiple_values(d['value'])
 
         if record is None:
             record = self.get_record(record_id=record_id)
@@ -83,4 +87,15 @@ class PandasClient(JSONClient):
         if len(series_list) == 0:
             return pd.DataFrame()
         df = pd.concat(series_list, axis=1)
+        return df
+
+    def _parse_multiple_values(self, d: List[Dict]) -> pd.DataFrame:
+        values_list = []
+        for values in d:
+            name = values['name']
+            data = self._parse_multiple_series(values['series'], name=name)
+            values_list.append(data)
+        if len(values_list) == 0:
+            return pd.DataFrame()
+        df = pd.concat(values_list, axis=1)
         return df

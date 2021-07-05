@@ -1,4 +1,6 @@
-from typing import Optional, Iterator, Tuple, Callable, List, Any
+from typing import Optional, Iterator, Tuple, Callable, List, Any, Dict
+import itertools
+
 
 
 def skip_tops(amount: Optional[int]=None, skip: int=0, top: int=200) -> Iterator[Tuple[int, int]]:
@@ -22,3 +24,11 @@ def handle_skip_top_limit(func: Callable, *args, amount: Optional[int]=None, chu
                 yield element
         else:
             break
+
+
+def groupby(collection: List[Dict], key: str) -> Tuple[str, List[Dict]]:
+    """Groups a list of dicts by a key"""
+    collection = collection.copy()
+    collection.sort(key=lambda x: x[key])
+    for k, v in itertools.groupby(collection, key=lambda x: x[key]):
+        yield k, list(v)
