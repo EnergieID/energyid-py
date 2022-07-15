@@ -110,7 +110,6 @@ class AsyncBaseClient(BaseClient):
         self._set_token_expiration_time(expires_in=response['expires_in'])
 
     @authenticated
-    @functools.lru_cache(maxsize=128, typed=False)
     async def _request(self, method: str, endpoint: str, **kwargs) -> Dict:
         headers = {'Content-Type': 'application/json'}
         endpoint = quote(endpoint)
