@@ -1,7 +1,10 @@
 import functools
-import itertools
 from enum import Enum
 from functools import wraps
+try:
+    from itertools import pairwise
+except ImportError:
+    from more_itertools import pairwise
 
 import pandas as pd
 import requests
@@ -279,7 +282,7 @@ class JSONClient(BaseClient):
             dates = list(pd.date_range(start=start, end=end, freq=freqs[interval],
                                        normalize=True))
             dates.append(end)
-            for _start, _end in itertools.pairwise(dates):
+            for _start, _end in pairwise(dates):
                 call = base.copy()
                 call["start"] = _start.strftime("%Y-%m-%d")
                 call["end"] = _end.strftime("%Y-%m-%d")
