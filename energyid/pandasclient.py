@@ -30,9 +30,18 @@ class PandasClient(JSONClient):
         ts = ts.rename(meter_id)
         return ts
 
+    def _parse_meter_data_multiple(
+            self,
+            data: List[Dict],
+            meter_id: str
+    ) -> pd.Series:
+        ts = pd.concat([self._parse_meter_data(data=d, meter_id=meter_id) for
+                        d in data])
+        return ts
+
     def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
         d = super(PandasClient, self).get_meter_data(meter_id=meter_id, **kwargs)
-        ts = self._parse_meter_data(data=d, meter_id=meter_id)
+        ts = self._parse_meter_data_multiple(data=d, meter_id=meter_id)
         return ts
 
     def get_record_data(

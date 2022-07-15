@@ -1,7 +1,9 @@
 import functools
+import itertools
 from enum import Enum
 from functools import wraps
 
+import pandas as pd
 import requests
 from urllib.parse import quote
 from typing import Union, Optional, List, Dict, Set
@@ -250,18 +252,58 @@ class JSONClient(BaseClient):
         return Meter(d, client=self)
 
     @staticmethod
-    def _get_meter_data_kwargs(meter_id, **kwargs) -> Dict:
-        return dict(
+    def _get_meter_data_kwargs(
+            meter_id: str,
+            start: Optional[Union[str, pd.Timestamp]] = None,
+            end: Optional[Union[str, pd.Timestamp]] = None,
+            interval: str = "P1D"
+    ) -> List[Dict]:
+        base = dict(
             method="GET",
-            endpoint=f'meters/{meter_id}/data',
-            **kwargs
+            endpoint=f'meters/{meter_id}/data'
         )
+        calls = []
+        if start is not None and end is not None:
+            start = pd.to_datetime(start)
+            end = pd.to_datetime(end)
 
-    def get_meter_data(self, meter_id: str, start: str = None, end: str = None, interval: str = None) -> Dict:
-        return self._request(
-            **self._get_meter_data_kwargs(meter_id=meter_id, start=start,
-                                          end=end, interval=interval)
+            freqs = {
+                "PT5M": '2D',
+                "PT15M": '7D',
+                "PT1H": '31D',
+                "P1D": '731D',
+                "P7D": "3653D",
+                "P1M": "3653D",
+                "P1Y": "3653D"
+            }
+            dates = list(pd.date_range(start=start, end=end, freq=freqs[interval],
+                                       normalize=True))
+            dates.append(end)
+            for _start, _end in itertools.pairwise(dates):
+                call = base.copy()
+                call["start"] = _start.strftime("%Y-%m-%d")
+                call["end"] = _end.strftime("%Y-%m-%d")
+                call["interval"] = interval
+                calls.append(call)
+        else:
+            calls.append(base)
+        return calls
+
+    def get_meter_data(
+            self,
+            meter_id: str,
+            start: Optional[Union[str, pd.Timestamp]] = None,
+            end: Optional[Union[str, pd.Timestamp]] = None,
+            interval: str = "P1D"
+    ) -> List[Dict]:
+        calls = self._get_meter_data_kwargs(
+            meter_id=meter_id,
+            start=start,
+            end=end,
+            interval=interval
         )
+        responses = [self._request(**call) for call in calls]
+        return responses
 
     def get_meter_reading(self, meter_id: str, key: str) -> dict:
         endpoint = f'meters/{meter_id}/readings/{key}'

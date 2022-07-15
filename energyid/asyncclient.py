@@ -1,7 +1,7 @@
 import functools
 from functools import wraps
 import datetime as dt
-from typing import Optional, Set, Dict
+from typing import Optional, Set, Dict, Union, List
 from urllib.parse import quote
 
 import aiohttp
@@ -130,11 +130,21 @@ class AsyncJSONClient(AsyncBaseClient, JSONClient):
         d = await self._request(**self._get_member_kwargs(user_id=user_id))
         return Member(d, client=self)
 
-    async def get_meter_data(self, meter_id: str, start: str = None, end: str = None, interval: str = None) -> Dict:
-        resp = await self._request(
-            **self._get_meter_data_kwargs(meter_id=meter_id, start=start,
-                                          end=end, interval=interval)
+    async def get_meter_data(
+            self,
+            meter_id: str,
+            start: Optional[Union[str, pd.Timestamp]] = None,
+            end: Optional[Union[str, pd.Timestamp]] = None,
+            interval: str = "P1D"
+    ) -> List[Dict]:
+        calls = self._get_meter_data_kwargs(
+            meter_id=meter_id,
+            start=start,
+            end=end,
+            interval=interval
         )
+        requests = [self._request(**call) for call in calls]
+        resp = await asyncio.gather(*requests)
         return resp
 
 
@@ -142,5 +152,5 @@ class AsyncPandasClient(AsyncJSONClient, PandasClient):
     async def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
         d = await super(AsyncPandasClient, self).get_meter_data(
             meter_id=meter_id, **kwargs)
-        ts = self._parse_meter_data(data=d, meter_id=meter_id)
+        ts = self._parse_meter_data_multiple(data=d, meter_id=meter_id)
         return ts
