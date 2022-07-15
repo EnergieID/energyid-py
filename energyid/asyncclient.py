@@ -11,7 +11,7 @@ import pandas as pd
 
 from energyid import PandasClient
 from energyid.client import BaseClient, Scope, JSONClient
-from models import Member
+from energyid.models import Member
 
 
 def authenticated(func):
