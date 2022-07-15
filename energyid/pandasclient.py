@@ -10,24 +10,30 @@ class PandasClient(JSONClient):
     def get_meter_readings(self, meter_id: str, **kwargs) -> pd.DataFrame:
         d = super(PandasClient, self).get_meter_readings(meter_id=meter_id, **kwargs)
         df = pd.DataFrame(d['readings'])
-        df['timestamp'] = pd.DatetimeIndex(df['timestamp'])
+        if df.empty:
+            return df
+        df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'],
+                                                          utc=True))
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
         return df
 
-    def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
-        d = super(PandasClient, self).get_meter_data(meter_id=meter_id, **kwargs)
-        df = pd.DataFrame(d['data'])
+    @staticmethod
+    def _parse_meter_data(data: Dict, meter_id: str) -> pd.Series:
+        df = pd.DataFrame(data['data'])
         if df.empty:
-            return pd.Series(name=meter_id)
+            return pd.Series(name=meter_id, dtype='float')
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
-        if isinstance(df.squeeze(), pd.Series):
-            df = df.squeeze().rename(meter_id)
-        else:
-            return pd.Series(name=meter_id)
-        return df
+        ts = df.squeeze(axis=1)
+        ts = ts.rename(meter_id)
+        return ts
+
+    def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
+        d = super(PandasClient, self).get_meter_data(meter_id=meter_id, **kwargs)
+        ts = self._parse_meter_data(data=d, meter_id=meter_id)
+        return ts
 
     def get_record_data(
             self, record_id: int, name: str, start: str, end: str,
@@ -59,7 +65,7 @@ class PandasClient(JSONClient):
     @staticmethod
     def _parse_single_series(d: Dict, name: Optional[str] = None) -> pd.Series:
         if len(d) == 0:
-            return pd.Series(name=name)
+            return pd.Series(name=name, dtype='object')
         df = pd.DataFrame(d)
         df.set_index('timestamp', inplace=True)
         # noinspection PyTypeChecker

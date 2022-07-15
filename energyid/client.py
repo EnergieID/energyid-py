@@ -9,9 +9,6 @@ import datetime as dt
 
 from .models import Group, Record, Member, Meter
 
-URL = "https://api.energyid.eu/api/v1"
-AUTH_URL = 'https://identity.energyid.eu/connect/token'
-
 
 class Scope(Enum):
     RECORDS_WRITE = 'records:write'
@@ -31,7 +28,12 @@ def authenticated(func):
     def wrapper(*args, **kwargs):
         self = args[0]
         if self.token is None:
-            raise PermissionError('You haven\'t authenticated yet!')
+            if self._username is not None and self._password is not None:
+                self.authenticate(username=self._username,
+                                  password=self._password, scopes=self._scopes)
+            else:
+                raise PermissionError('You haven\'t authenticated yet and '
+                                      'have not provided credentials!')
         if self._refresh_token is not None and \
            self._token_expiration_time <= dt.datetime.utcnow():
             self._re_authenticate()
@@ -40,28 +42,68 @@ def authenticated(func):
 
 
 class BaseClient:
-    def __init__(self, client_id: str, client_secret: str):
+    URL = "https://api.energyid.eu/api/v1"
+    AUTH_URL = 'https://identity.energyid.eu/connect/token'
+
+    def __init__(
+            self,
+            client_id: str,
+            client_secret: str,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            scopes: Optional[Set[Scope]] = (Scope.RECORDS_READ,
+                                            Scope.PROFILE_READ, Scope.GROUPS_READ),
+            session: Optional[requests.Session] = None
+    ):
         self._client_id = client_id
         self._client_secret = client_secret
+        self._username = username
+        self._password = password
+        self._scopes = scopes
         self._token = None
         self._refresh_token = None
         self._token_expiration_time = None
-        self._session = requests.Session()
+        self._session = session
+
+    @property
+    def session(self) -> requests.Session:
+        if self._session is None:
+            self._session = requests.Session()
+        return self._session
+
+    def _auth_params(
+            self,
+            username: str,
+            password: str,
+            scopes: Set[Scope]
+    ) -> Dict:
+        return {
+            'grant_type': 'password',
+            'username': username,
+            'password': password,
+            'scope': ' '.join(scope.value for scope in scopes) + ' offline_access'
+        }
 
     def authenticate(self, username: str, password: str,
                      scopes: Set[Scope] = (Scope.RECORDS_READ, Scope.PROFILE_READ, Scope.GROUPS_READ)):
-        data = {'grant_type': 'password', 'username': username, 'password': password,
-                'scope': ' '.join(scope.value for scope in scopes) + ' offline_access'}
-        self._auth_request(data=data)
+        self._auth_request(
+            data=self._auth_params(
+                username=username,
+                password=password,
+                scopes=scopes
+            )
+        )
+
+    def _re_auth_params(self) -> Dict:
+        return {'grant_type': 'refresh_token', 'refresh_token': self._refresh_token}
 
     def _re_authenticate(self):
-        data = {'grant_type': 'refresh_token', 'refresh_token': self._refresh_token}
-        self._auth_request(data=data)
+        self._auth_request(data=self._re_auth_params())
 
     def _auth_request(self, data: Dict):
-        self._session.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        self.session.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         data.update({'client_id': self._client_id, 'client_secret': self._client_secret})
-        r = self._session.post(url=AUTH_URL, data=data)
+        r = self.session.post(url=self.AUTH_URL, data=data)
         r.raise_for_status()
         response = r.json()
         self.token = response['access_token']
@@ -75,18 +117,18 @@ class BaseClient:
     @token.setter
     def token(self, value):
         self._token = value
-        self._session.headers.update({"Authorization": f"bearer {value}"})
+        self.session.headers.update({"Authorization": f"bearer {value}"})
 
     def _set_token_expiration_time(self, expires_in):
         self._token_expiration_time = dt.datetime.utcnow() + \
                                       dt.timedelta(0, expires_in)  # timedelta(days, seconds)
 
     @authenticated
-    #@functools.lru_cache(maxsize=128, typed=False)
+    @functools.lru_cache(maxsize=128, typed=False)
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
-        #self._session.headers.update({'Content-Type': 'application/json'})
+        self.session.headers.update({'Content-Type': 'application/json'})
         endpoint = quote(endpoint)
-        url = f'{URL}/{endpoint}'
+        url = f'{self.URL}/{endpoint}'
         if method == 'GET':
             r = self._session.get(url, params=kwargs)
         elif method == 'POST':
@@ -143,10 +185,16 @@ class JSONClient(BaseClient):
         endpoint = f'groups/{group_id}/records/{record_id}'
         self._request('DELETE', endpoint)
 
+    @staticmethod
+    def _get_member_kwargs(user_id: str = 'me') -> Dict:
+        return dict(
+            method='GET',
+            endpoint=f'members/{user_id}'
+        )
+
     def get_member(self, user_id: str = 'me') -> Member:
         """user_id can also be an e-mail address or simply 'me'"""
-        endpoint = f'members/{user_id}'
-        d = self._request('GET', endpoint)
+        d = self._request(**self._get_member_kwargs(user_id=user_id))
         return Member(d, client=self)
 
     def get_member_groups(self, user_id: str='me', **kwargs) -> List[Group]:
@@ -201,9 +249,19 @@ class JSONClient(BaseClient):
         d = self._request('PUT', endpoint, **kwargs)
         return Meter(d, client=self)
 
+    @staticmethod
+    def _get_meter_data_kwargs(meter_id, **kwargs) -> Dict:
+        return dict(
+            method="GET",
+            endpoint=f'meters/{meter_id}/data',
+            **kwargs
+        )
+
     def get_meter_data(self, meter_id: str, start: str = None, end: str = None, interval: str = None) -> Dict:
-        endpoint = f'meters/{meter_id}/data'
-        return self._request('GET', endpoint, id=meter_id, start=start, end=end, interval=interval)
+        return self._request(
+            **self._get_meter_data_kwargs(meter_id=meter_id, start=start,
+                                          end=end, interval=interval)
+        )
 
     def get_meter_reading(self, meter_id: str, key: str) -> dict:
         endpoint = f'meters/{meter_id}/readings/{key}'
@@ -288,6 +346,11 @@ class JSONClient(BaseClient):
     def get_record_definitions(self, record_id: str) -> List[Dict]:
         endpoint = f'records/{record_id}/definitions'
         return self._request('GET', endpoint)['data']
+
+    def search_cities(self, country: str, query: str, **kwargs) -> Dict:
+        endpoint = f'search/cities'
+        return self._request('GET', endpoint, country=country, query=query,
+                         **kwargs)
 
 
 class SimpleJSONClient(JSONClient):

@@ -2,7 +2,7 @@ from typing import Optional, Union, Iterator, List, TYPE_CHECKING, Dict
 from json import JSONDecodeError
 import pandas as pd
 
-from .misc import handle_skip_top_limit
+from energyid.misc import handle_skip_top_limit
 if TYPE_CHECKING:
     from .client import JSONClient
 
