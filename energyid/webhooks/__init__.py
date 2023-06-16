@@ -1,1 +1,1 @@
-from .client import WebhookClient, WebhookClientAsync
+from energyid_webhooks import WebhookClient, WebhookClientAsync
