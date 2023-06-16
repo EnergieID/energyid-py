@@ -106,3 +106,4 @@ venv.bak/
 credentials.yaml
 .idea/*
 notebooks/*
+.vscode/*
