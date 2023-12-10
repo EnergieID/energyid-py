@@ -2,3 +2,4 @@ requests
 pandas
 aiohttp
 energyid-webhooks
+more-itertools
