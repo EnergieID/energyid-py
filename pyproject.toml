@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "energyid-py"
+packages = [
+    { include = "energyid" },
+]
+version = "0.0.18"
+description = "Python interface for the EnergyID API and Webhooks"
+authors = [
+    "Jan Pecinovsky <jan@energieid.be>",
+    "Max Helskens <max@energieid.be>",
+    "Oscar Swyns <oscar@energieid.be>",
+]
+license = "MIT"
+readme = "README.md"
+homepage = "https://api.energyid.eu/"
+repository = "https://github.com/EnergieID/energyid-py"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.32.3"
+pandas = "^2.2.2"
+aiohttp = "^3.10.1"
+energyid-webhooks = "^0.0.6"
+more-itertools = "^10.3.0"
+
+[tool.poetry.group.dev.dependencies]
+matplotlib = "^3.9.0"
+pyyaml = "^6.0.1"
+locust = "^2.31.1"
+ipykernel = "^6.29.5"
+requests = "^2.32.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
