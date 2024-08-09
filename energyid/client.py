@@ -402,6 +402,7 @@ class JSONClient(BaseClient):
         end: str,
         interval: str = "day",
         filter: str = None,
+        grouping: str = None,
         **kwargs,
     ) -> dict:
         endpoint = f"records/{record_id}/data/{name}"
@@ -412,6 +413,7 @@ class JSONClient(BaseClient):
             end=end,
             filter=filter,
             interval=interval,
+            grouping=grouping,
             **kwargs,
         )
 

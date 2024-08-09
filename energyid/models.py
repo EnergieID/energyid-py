@@ -131,6 +131,7 @@ class Record(Model):
         end: str,
         interval: str = "day",
         filter: str = None,
+        grouping: str = None,  # or carrier or type or null or meter
         **kwargs,
     ) -> dict:
         return self.client.get_record_data(
@@ -140,6 +141,7 @@ class Record(Model):
             end=end,
             interval=interval,
             filter=filter,
+            grouping=grouping,
             **kwargs,
         )
 
