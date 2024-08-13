@@ -1,10 +1,9 @@
-import time
 from locust import HttpUser, task, between, tag
 from energyid import JSONClient
 import yaml
 
 
-with open('credentials.yaml', 'r') as f:
+with open("credentials.yaml") as f:
     credentials = yaml.safe_load(f)
 
 
@@ -12,10 +11,10 @@ class User(HttpUser):
     wait_time = between(1, 2.5)
 
     def __init__(self, *args, **kwargs):
-        super(User, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.eid_client = JSONClient(
-            client_id=credentials['client_id'],
-            client_secret=credentials['client_secret']
+            client_id=credentials["client_id"],
+            client_secret=credentials["client_secret"],
         )
         self.eid_client._session = self.client
 
@@ -25,10 +24,11 @@ class User(HttpUser):
 
     def on_start(self):
         self.eid_client.authenticate(
-            username=credentials['username'],
-            #username='pen1@energieid.be',
-            #password='pen-test-1')
-            password=credentials['password'])
+            username=credentials["username"],
+            # username='pen1@energieid.be',
+            # password='pen-test-1')
+            password=credentials["password"],
+        )
 
     @task
     def get_meter_catalog(self):
@@ -47,8 +47,9 @@ class User(HttpUser):
         self.eid_client.get_member_records()
 
     @task
-    @tag('meters')
+    @tag("meters")
     def get_meters(self):
         records = self.eid_client.get_member_records()
         for record in records:
             meters = record.get_meters()
+        return meters
