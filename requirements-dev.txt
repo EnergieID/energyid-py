@@ -15,7 +15,7 @@ debugpy==1.8.5
 decorator==5.1.1
 exceptiongroup==1.2.2
 executing==2.0.1
-flask-cors==4.0.1
+flask-cors==5.0.0
 flask-login==0.6.3
 flask==3.0.3
 fonttools==4.53.1
