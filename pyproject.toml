@@ -19,7 +19,7 @@ repository = "https://github.com/EnergieID/energyid-py"
 python = "^3.9"
 requests = "^2.32.3"
 pandas = "^2.2.2"
-aiohttp = "^3.10.2"
+aiohttp = "^3.10.11"
 energyid-webhooks = "^0.0.6"
 more-itertools = "^10.3.0"
 
