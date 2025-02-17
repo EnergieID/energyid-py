@@ -42,8 +42,7 @@ def authenticated(func):
                 )
             else:
                 raise PermissionError(
-                    "You haven't authenticated yet and "
-                    "have not provided credentials!"
+                    "You haven't authenticated yet and have not provided credentials!"
                 )
         if (
             self._refresh_token is not None

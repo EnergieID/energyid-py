@@ -8,7 +8,7 @@ repos:
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.8.3
+    rev: v0.9.6
     hooks:
       # Run the linter.
       - id: ruff
@@ -19,7 +19,29 @@ repos:
         types_or: [python, pyi, jupyter]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.0
+    rev: v3.19.1
     hooks:
       - id: pyupgrade
         args: [--py311-plus]
+
+  - repo: local
+    hooks:
+      - id: poetry-export-prod
+        name: Poetry export production requirements
+        entry: poetry export -f requirements.txt --output requirements.txt --without-hashes
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|poetry\.lock)$
+      - id: poetry-export-dev
+        name: Poetry export development requirements
+        entry: poetry export -f requirements.txt --output requirements-dev.txt --without-hashes --only dev
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|poetry\.lock)$
+      - id: clear-notebooks
+        name: Clear Jupyter Notebook outputs
+        entry: jupyter nbconvert --clear-output --inplace
+        additional_dependencies: [jupyter, nbconvert]
+        language: python
+        pass_filenames: true
+        files: \.ipynb$
