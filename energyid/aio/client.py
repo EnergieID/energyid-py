@@ -7,9 +7,9 @@ import asyncio
 
 import pandas as pd
 
-from energyid import PandasClient
-from energyid.client import BaseClient, Scope, JSONClient
-from energyid.models import Member
+import energyid
+from energyid.client import Scope, JSONClient
+from .models import Member, Record
 
 
 def authenticated(func):
@@ -50,7 +50,7 @@ def authenticated(func):
     return wrapper
 
 
-class AsyncBaseClient(BaseClient):
+class BaseClient(energyid.client.BaseClient):
     def __init__(
         self,
         client_id: str,
@@ -143,7 +143,7 @@ class AsyncBaseClient(BaseClient):
         return j
 
 
-class AsyncJSONClient(AsyncBaseClient, JSONClient):
+class JSONClient(BaseClient, energyid.JSONClient):
     async def get_member(self, user_id: str = "me") -> Member:
         d = await self._request(**self._get_member_kwargs(user_id=user_id))
         return Member(d, client=self)
@@ -161,10 +161,28 @@ class AsyncJSONClient(AsyncBaseClient, JSONClient):
         requests = [self._request(**call) for call in calls]
         resp = await asyncio.gather(*requests)
         return resp
+    
+    async def get_member_records(self, user_id: str = "me") -> list[Record]:
+        endpoint = f"members/{user_id}/records"
+        d = await self._request(method="GET", endpoint=endpoint)
+        return [Record(r, client=self) for r in d]
+    
+    async def get_record(self, record_id: int) -> Record:
+        endpoint = f"records/{record_id}"
+        d = await self._request(method="GET", endpoint=endpoint)
+        return Record(d, client=self)
 
 
-class AsyncPandasClient(AsyncJSONClient, PandasClient):
+class PandasClient(JSONClient, energyid.PandasClient):
     async def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
         d = await super().get_meter_data(meter_id=meter_id, **kwargs)
         ts = self._parse_meter_data_multiple(data=d, meter_id=meter_id)
         return ts
+
+    async def get_record_data(self, record_id: int, name, record = None, **kwargs) -> pd.Series | pd.DataFrame:
+        d = await JSONClient.get_record_data(self, record_id=record_id, name=name, **kwargs)
+        data = self._parse_record_data(d, name)
+        if record is None:
+            record = await self.get_record(record_id=record_id)
+        data = data.tz_convert(record.timezone)
+        return data

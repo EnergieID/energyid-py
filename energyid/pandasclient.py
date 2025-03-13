@@ -58,6 +58,15 @@ class PandasClient(JSONClient):
             filter=filter,
             **kwargs,
         )
+        data = self._parse_record_data(d, name=name)
+
+        if record is None:
+            record = self.get_record(record_id=record_id)
+        data = data.tz_convert(record.timezone)
+
+        return data
+    
+    def _parse_record_data(self, d, name):
         if len(d["value"]) == 1:
             values = d["value"][0]
 
@@ -70,11 +79,6 @@ class PandasClient(JSONClient):
                 raise ValueError("Data block not found")
         else:
             data = self._parse_multiple_values(d["value"])
-
-        if record is None:
-            record = self.get_record(record_id=record_id)
-        data = data.tz_convert(record.timezone)
-
         return data
 
     @staticmethod
