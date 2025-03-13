@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from json import JSONDecodeError
 import pandas as pd
 
-from energyid.misc import handle_skip_top_limit
+from energyid.misc import handle_skip_take_limit
 
 if TYPE_CHECKING:
     from .client import JSONClient
@@ -177,7 +177,7 @@ class Group(Model):
         self, amount: int | None = None, chunk_size=200
     ) -> Iterator[Member]:
         """Use amount=None to get all members"""
-        members = handle_skip_top_limit(
+        members = handle_skip_take_limit(
             self.client.get_group_members,
             group_id=self.id,
             amount=amount,
@@ -186,14 +186,15 @@ class Group(Model):
         return members
 
     def get_records(
-        self, amount: int | None = None, chunk_size=200
+        self, amount: int | None = None, chunk_size=200, **kwargs
     ) -> Iterator[Record]:
         """Use amount=None to get all records"""
-        records = handle_skip_top_limit(
+        records = handle_skip_take_limit(
             self.client.get_group_records,
             group_id=self.id,
             amount=amount,
             chunk_size=chunk_size,
+            **kwargs
         )
         return records
 

@@ -176,11 +176,11 @@ class JSONClient(BaseClient):
         return Group(d, client=self)
 
     def get_group_records(
-        self, group_id: str, top: int = 200, skip: int = 0
+        self, group_id: str, **kwargs
     ) -> list[Record]:
         """group_id can also be the group slug"""
         endpoint = f"groups/{group_id}/records"
-        d = self._request("GET", endpoint, top=top, skip=skip)
+        d = self._request("GET", endpoint, **kwargs)
         # TODO: check if this returns a record or only scopes
         return [Record(r, client=self) for r in d]
 

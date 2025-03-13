@@ -17,11 +17,11 @@ def skip_tops(
         count = count + top
 
 
-def handle_skip_top_limit(
+def handle_skip_take_limit(
     func: Callable, *args, amount: int | None = None, chunk_size=200, **kwargs
 ):
-    for skip, top in skip_tops(amount=amount, top=chunk_size):
-        elements = func(*args, skip=skip, top=top, **kwargs)
+    for skip, take in skip_tops(amount=amount, top=chunk_size):
+        elements = func(*args, skip=skip, take=take, **kwargs)
         if len(elements) != 0:
             yield from elements
         else:
