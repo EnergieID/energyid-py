@@ -9,7 +9,7 @@ import pandas as pd
 
 import energyid
 from energyid.client import Scope, JSONClient
-from .models import Member, Record
+from .models import Member, Record, Group
 
 
 def authenticated(func):
@@ -172,6 +172,15 @@ class JSONClient(BaseClient, energyid.JSONClient):
         d = await self._request(method="GET", endpoint=endpoint)
         return Record(d, client=self)
 
+    async def get_group(self, group_id: str, **kwargs) -> Group:
+        endpoint = f"groups/{group_id}"
+        d = await self._request(method="GET", endpoint=endpoint, **kwargs)
+        return Group(d, client=self)
+    
+    async def get_group_records(self, group_id: str, **kwargs) -> list[Record]:
+        endpoint = f"groups/{group_id}/records"
+        d = await self._request(method="GET", endpoint=endpoint, **kwargs)
+        return [Record(r, client=self) for r in d]
 
 class PandasClient(JSONClient, energyid.PandasClient):
     async def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:

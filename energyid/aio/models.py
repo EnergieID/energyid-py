@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 import energyid
 import energyid.models
+from .misc import handle_skip_take_limit
 
 if TYPE_CHECKING:
     from .client import JSONClient
@@ -16,3 +17,13 @@ class Member(Model, energyid.models.Member):
 
 class Record(Model, energyid.models.Record):
     pass
+
+class Group(Model, energyid.models.Group):
+    def get_records(self, amount=None, chunk_size=200, **kwargs):
+        return handle_skip_take_limit(
+            self.client.get_group_records,
+            group_id=self.id,
+            amount=amount,
+            chunk_size=chunk_size,
+            **kwargs
+        )
