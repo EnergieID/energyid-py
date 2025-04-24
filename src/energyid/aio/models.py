@@ -19,11 +19,15 @@ class Member(Model, energyid.models.Member):
 
 
 class Record(Model, energyid.models.Record):
-    pass
+    async def extend_info(self):
+        record = await self.client.get_record(record_id=self.id)
+        self.update(record)
 
 
 class Group(Model, energyid.models.Group):
-    def get_records(self, amount=None, chunk_size=200, **kwargs):
+    def get_records(self, amount: int | None = None, chunk_size=200, **kwargs):
+        if amount is None:
+            amount = self["recordCount"]
         return handle_skip_take_limit(
             self.client.get_group_records,
             group_id=self.id,
