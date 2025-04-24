@@ -65,7 +65,7 @@ class PandasClient(JSONClient):
         data = data.tz_convert(record.timezone)
 
         return data
-    
+
     def _parse_record_data(self, d, name):
         if len(d["value"]) == 1:
             values = d["value"][0]

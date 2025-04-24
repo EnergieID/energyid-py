@@ -1,11 +1,11 @@
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
 from energyid.misc import skip_tops
 
 
 async def handle_skip_take_limit(
-        func: Callable, *args, amount: int, chunk_size=200, **kwargs
+    func: Callable, *args, amount: int, chunk_size=200, **kwargs
 ):
     if amount is None:
         raise ValueError("Amount must be an integer")

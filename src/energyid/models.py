@@ -194,7 +194,7 @@ class Group(Model):
             group_id=self.id,
             amount=amount,
             chunk_size=chunk_size,
-            **kwargs
+            **kwargs,
         )
         return records
 

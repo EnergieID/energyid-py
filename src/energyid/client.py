@@ -175,9 +175,7 @@ class JSONClient(BaseClient):
         d = self._request("GET", endpoint, **kwargs)
         return Group(d, client=self)
 
-    def get_group_records(
-        self, group_id: str, **kwargs
-    ) -> list[Record]:
+    def get_group_records(self, group_id: str, **kwargs) -> list[Record]:
         """group_id can also be the group slug"""
         endpoint = f"groups/{group_id}/records"
         d = self._request("GET", endpoint, **kwargs)
