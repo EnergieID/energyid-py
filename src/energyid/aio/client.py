@@ -182,6 +182,11 @@ class JSONClient(BaseClient, energyid.JSONClient):
         d = await self._request(method="GET", endpoint=endpoint, **kwargs)
         return [Record(r, client=self) for r in d]
 
+    async def get_record_definitions(self, record_id: str) -> list[dict]:
+        endpoint = f"records/{record_id}/definitions"
+        d = await self._request(method="GET", endpoint=endpoint)
+        return d["data"]
+
 
 class PandasClient(JSONClient, energyid.PandasClient):
     async def get_meter_data(self, meter_id: str, **kwargs) -> pd.Series:
