@@ -1,9 +1,9 @@
-from .client import JSONClient, SimpleJSONClient, Scope
+from .client import JSONClient, Scope
 from .pandasclient import PandasClient
 
 __title__ = "energyid"
-__version__ = "0.0.18"
+__version__ = "1.0.0"
 __author__ = "EnergieID.be"
 __license__ = "MIT"
 
-__all__ = ["JSONClient", "SimpleJSONClient", "Scope", "PandasClient"]
+__all__ = ["JSONClient", "Scope", "PandasClient"]

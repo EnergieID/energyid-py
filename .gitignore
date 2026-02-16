@@ -107,3 +107,12 @@ credentials.yaml
 .idea/*
 notebooks/*
 .vscode/*
+
+# Data files - prevent accumulation of exports/intermediary results
+*.zip
+*.xlsx
+*.csv
+*.ndjson
+*.pdf
+data/
+~$*

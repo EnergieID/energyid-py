@@ -1,7 +1,7 @@
 [project]
 name = "energyid-py"
-version = "0.0.19"
-description = "Python interface for the EnergyID API and Webhooks"
+version = "1.0.0"
+description = "Python interface for the EnergyID API"
 authors = [
     { name = "Jan Pecinovsky", email = "jan@energieid.be" },
     { name = "Oscar Swyns", email = "oscar@energieid.be" },
@@ -12,14 +12,31 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "aiohttp>=3.11.18",
-    "energyid-webhooks>=0.0.6",
-    "more-itertools>=10.7.0",
     "pandas>=2.2.3",
     "requests>=2.32.3",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/energyid"]
+
 [dependency-groups]
 dev = [
+    "fastexcel>=0.14.0",
     "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.7",
+    "jupyter>=1.1.1",
+    "nbconvert>=7.16.6",
+    "pip>=25.1.1",
+    "polars-lts-cpu>=1.30.0",
     "pre-commit>=4.2.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+    "xlsxwriter>=3.2.3",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

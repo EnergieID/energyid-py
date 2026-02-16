@@ -27,6 +27,36 @@ class Member(Model):
     def get_records(self) -> list["Record"]:
         return self.client.get_member_records(user_id=self.id)
 
+    def get_limits(self) -> list[dict]:
+        """Get the limits for this member."""
+        return self.client.get_member_limits(user_id=self.id)
+
+    def update(
+        self,
+        full_name: str = None,
+        initials: str = None,
+        biography: str = None,
+        **kwargs,
+    ) -> None:
+        """Update this member's profile. If called with a dict (from dict.update), delegate to dict."""
+        if isinstance(full_name, dict):
+            # Called as dict.update(other_dict)
+            super().update(full_name)
+            return
+        if full_name is not None and initials is not None:
+            result = self.client.update_member(
+                user_id=self.id,
+                full_name=full_name,
+                initials=initials,
+                biography=biography,
+            )
+            super().update(result)
+
+    def set_language(self, lang: str) -> None:
+        """Set this member's preferred language."""
+        result = self.client.set_member_language(user_id=self.id, lang=lang)
+        super().update(result)
+
 
 class Meter(Model):
     def create_reading(self, timestamp: str, value: int | float) -> dict:
@@ -36,7 +66,12 @@ class Meter(Model):
 
     def hide(self, hidden: bool = True) -> None:
         self.client.hide_meter(meter_id=self.id, hidden=hidden)
-        self.update({"hidden": hidden})
+        super().update({"hidden": hidden})
+
+    def close(self, closed: bool = True) -> None:
+        """Close or reopen this meter."""
+        self.client.close_meter(meter_id=self.id, closed=closed)
+        super().update({"closed": closed})
 
     def edit(self, **kwargs) -> None:
         self.client.edit_meter(meter_id=self.id, **kwargs)
@@ -53,9 +88,7 @@ class Meter(Model):
     def get_latest_reading(self) -> dict:
         try:
             return self.client.get_meter_latest_reading(meter_id=self.id)
-        except (
-            JSONDecodeError
-        ):  # TODO: check if API returns empty object after next deploy
+        except JSONDecodeError:
             return {}
 
     def edit_reading(self, key: str, new_value: int | float) -> None:
@@ -131,7 +164,7 @@ class Record(Model):
         end: str,
         interval: str = "day",
         filter: str = None,
-        grouping: str = None,  # or carrier or type or null or meter
+        grouping: str = None,
         **kwargs,
     ) -> dict:
         return self.client.get_record_data(
@@ -166,10 +199,40 @@ class Record(Model):
     def extend_info(self):
         """You might get a record with limited info. Use this to extend the info"""
         record = self.client.get_record(record_id=self.id)
-        self.update(record)
+        dict.update(self, record)
 
     def get_definitions(self) -> list[dict]:
         return self.client.get_record_definitions(record_id=self.id)
+
+    def get_directives(self) -> list[dict]:
+        """List all directives for this record."""
+        return self.client.get_record_directives(record_id=self.id)
+
+    def get_activity(self, **kwargs) -> dict:
+        """Get this record's activity log entries."""
+        return self.client.get_record_activity(record_id=self.id, **kwargs)
+
+    def get_timeline(self, from_date: str, to_date: str) -> list[dict]:
+        """List the timeline items of this record."""
+        return self.client.get_record_timeline(
+            record_id=self.id, from_date=from_date, to_date=to_date
+        )
+
+    def create_timeline_item(self, display_name: str, start: str, **kwargs) -> dict:
+        """Create a new timeline item for this record."""
+        return self.client.create_timeline_item(
+            record_id=self.id, display_name=display_name, start=start, **kwargs
+        )
+
+    def get_limits(self) -> list[dict]:
+        """List the limits for this record."""
+        return self.client.get_record_limits(record_id=self.id)
+
+    def get_benchmark(self, name: str, year: int, month: int | None = None) -> dict:
+        """Benchmark aggregated metrics for this record."""
+        return self.client.get_record_benchmark(
+            record_id=self.id, name=name, year=year, month=month
+        )
 
 
 class Group(Model):
@@ -197,6 +260,27 @@ class Group(Model):
             **kwargs,
         )
         return records
+
+    def get_meters(
+        self, amount: int | None = None, chunk_size=200, **kwargs
+    ) -> Iterator[Meter]:
+        """Use amount=None to get all meters."""
+        meters = handle_skip_take_limit(
+            self.client.get_group_meters,
+            group_id=self.id,
+            amount=amount,
+            chunk_size=chunk_size,
+            **kwargs,
+        )
+        return meters
+
+    def get_my_records(self, **kwargs) -> list[Record]:
+        """Get my records in this group."""
+        return self.client.get_group_my_records(group_id=self.id, **kwargs)
+
+    def get_admins(self) -> list[dict]:
+        """Get this group's admins."""
+        return self.client.get_group_admins(group_id=self.id)
 
     def add_record(self, record_id: int, access_key: str | None = None) -> None:
         self.client.add_record_to_group(
@@ -253,3 +337,11 @@ class Group(Model):
             record_list.append(record)
         df = pd.DataFrame.from_dict(record_list)
         return df
+
+
+class Organization(Model):
+    """Model representing an EnergyID organization."""
+
+    def get_groups(self, lang: str | None = None) -> list[Group]:
+        """List the groups of this organization."""
+        return self.client.get_organization_groups(org_id=self.id, lang=lang)
