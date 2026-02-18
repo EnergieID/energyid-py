@@ -1,5 +1,4 @@
-from .client import JSONClient, Scope
-from .pandasclient import PandasClient
+from .aio import JSONClient, PandasClient, Scope
 
 __title__ = "energyid"
 __version__ = "1.0.0"

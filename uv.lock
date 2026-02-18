@@ -482,7 +482,6 @@ source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "pandas" },
-    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -504,7 +503,6 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.11.18" },
     { name = "pandas", specifier = ">=2.2.3" },
-    { name = "requests", specifier = ">=2.32.3" },
 ]
 
 [package.metadata.requires-dev]

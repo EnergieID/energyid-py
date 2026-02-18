@@ -1,8 +1,11 @@
 """Tests for the async client."""
 
+import asyncio
 import inspect
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
 import pytest
 
 from energyid.aio.client import (
@@ -121,6 +124,77 @@ class TestAsyncClientContextManager:
     def test_has_aenter_aexit(self):
         assert hasattr(AsyncJSONClient, "__aenter__")
         assert hasattr(AsyncJSONClient, "__aexit__")
+
+
+class TestAsyncRateLimiting:
+    @pytest.mark.asyncio
+    async def test_max_concurrency_caps_inflight_requests(self):
+        client = AsyncJSONClient(
+            api_key="test-key",
+            max_concurrency=1,
+            max_requests_per_window=None,
+        )
+        state = {"active": 0, "peak": 0}
+
+        def side_effect(*args, **kwargs):
+            mock_resp = AsyncMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json = AsyncMock(return_value={})
+
+            class _CM:
+                async def __aenter__(self):
+                    state["active"] += 1
+                    state["peak"] = max(state["peak"], state["active"])
+                    await asyncio.sleep(0.01)
+                    return mock_resp
+
+                async def __aexit__(self, exc_type, exc_val, exc_tb):
+                    state["active"] -= 1
+                    return None
+
+            return _CM()
+
+        with patch.object(client.session, "request", side_effect=side_effect):
+            await asyncio.gather(
+                *[client._request("GET", "members/me") for _ in range(5)]
+            )
+
+        assert state["peak"] == 1
+
+    @pytest.mark.asyncio
+    async def test_rate_window_throttles_bursts(self):
+        client = AsyncJSONClient(
+            api_key="test-key",
+            max_concurrency=None,
+            max_requests_per_window=2,
+            rate_limit_window_seconds=0.05,
+        )
+        timestamps = []
+
+        def side_effect(*args, **kwargs):
+            mock_resp = AsyncMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json = AsyncMock(return_value={})
+
+            class _CM:
+                async def __aenter__(self):
+                    timestamps.append(time.monotonic())
+                    return mock_resp
+
+                async def __aexit__(self, exc_type, exc_val, exc_tb):
+                    return None
+
+            return _CM()
+
+        with patch.object(client.session, "request", side_effect=side_effect):
+            await asyncio.gather(
+                *[client._request("GET", "members/me") for _ in range(5)]
+            )
+
+        times = sorted(timestamps)
+        assert len(times) == 5
+        assert times[2] - times[0] >= 0.045
+        assert times[4] - times[2] >= 0.045
 
 
 class TestAsyncPandasClient:
@@ -272,6 +346,66 @@ class TestAsyncFunctionalRecords:
                 "EA-123", "electricityImport", 2024
             )
             assert bm["median"] == 5000
+
+    @pytest.mark.asyncio
+    async def test_get_record_benchmark_handles_204_no_content(self):
+        mock_resp = AsyncMock()
+        mock_resp.status = 204
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(
+            side_effect=AssertionError("json() must not be called")
+        )
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__.return_value = mock_resp
+        mock_cm.__aexit__.return_value = None
+
+        with patch.object(self.client.session, "request", return_value=mock_cm):
+            bm = await self.client.get_record_benchmark("EA-123", "energyUse", 2024)
+            assert bm == {}
+
+
+class TestAsyncRequestParsing:
+    @pytest.mark.asyncio
+    async def test_request_uses_lenient_json_content_type(self):
+        client = AsyncJSONClient(api_key="test-key")
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(return_value={"ok": True})
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__.return_value = mock_resp
+        mock_cm.__aexit__.return_value = None
+
+        with patch.object(client.session, "request", return_value=mock_cm):
+            result = await client._request("GET", "members/me")
+            assert result == {"ok": True}
+            mock_resp.json.assert_awaited_once_with(content_type=None)
+
+    @pytest.mark.asyncio
+    async def test_request_propagates_unauthorized(self):
+        client = AsyncJSONClient(api_key="test-key")
+        mock_resp = MagicMock()
+        mock_resp.status = 401
+        mock_resp.reason = "Unauthorized"
+        mock_resp.request_info = MagicMock(
+            real_url="https://api.energyid.eu/api/v1/groups/x/admins"
+        )
+        mock_resp.history = ()
+        mock_resp.headers = {}
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(return_value={"error": "unauthorized"})
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__.return_value = mock_resp
+        mock_cm.__aexit__.return_value = None
+
+        with patch.object(client.session, "request", return_value=mock_cm):
+            with pytest.raises(aiohttp.ClientResponseError) as exc:
+                await client._request("GET", "groups/x/admins")
+            assert exc.value.status == 401
+            assert "Authorization failed for this endpoint" in exc.value.message
 
 
 class TestAsyncFunctionalGroups:
