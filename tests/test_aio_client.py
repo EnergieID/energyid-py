@@ -12,6 +12,7 @@ from energyid.aio.client import (
     JSONClient as AsyncJSONClient,
     PandasClient as AsyncPandasClient,
 )
+from energyid.aio.clients.rate_limit import AsyncRequestLimiter
 
 
 # ── Structural Tests ─────────────────────────────────────────
@@ -195,6 +196,30 @@ class TestAsyncRateLimiting:
         assert len(times) == 5
         assert times[2] - times[0] >= 0.045
         assert times[4] - times[2] >= 0.045
+
+    @pytest.mark.asyncio
+    async def test_cancelled_acquire_releases_concurrency_permit(self):
+        limiter = AsyncRequestLimiter(
+            max_concurrency=1,
+            max_requests_per_window=1,
+            rate_limit_window_seconds=60.0,
+        )
+        limiter._timestamps.append(time.monotonic())
+
+        task = asyncio.create_task(limiter.acquire())
+        for _ in range(10):
+            if limiter._semaphore is not None and limiter._semaphore.locked():
+                break
+            await asyncio.sleep(0)
+
+        assert limiter._semaphore is not None
+        assert limiter._semaphore.locked()
+
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert not limiter._semaphore.locked()
 
 
 class TestAsyncPandasClient:

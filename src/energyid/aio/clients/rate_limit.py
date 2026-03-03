@@ -30,13 +30,14 @@ class AsyncRequestLimiter:
         self._timestamps_lock = asyncio.Lock()
 
     async def acquire(self) -> None:
-        if self._semaphore is not None:
-            await self._semaphore.acquire()
+        semaphore = self._semaphore
+        if semaphore is not None:
+            await semaphore.acquire()
         try:
             await self._acquire_rate_slot()
-        except Exception:
-            if self._semaphore is not None:
-                self._semaphore.release()
+        except BaseException:
+            if semaphore is not None:
+                semaphore.release()
             raise
 
     def release(self) -> None:
