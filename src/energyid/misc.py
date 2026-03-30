@@ -1,5 +1,5 @@
-from collections.abc import Iterator, Callable
 import itertools
+from collections.abc import Iterator, Callable
 
 
 def skip_tops(
