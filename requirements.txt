@@ -4,7 +4,7 @@
 aiohappyeyeballs==2.6.1
     # via aiohttp
 aiohttp==3.11.18
-    # via energyid-py
+    # via energyid
 aiosignal==1.3.2
     # via aiohttp
 async-timeout==5.0.1 ; python_full_version < '3.11'
@@ -24,7 +24,7 @@ multidict==6.4.3
 numpy==2.2.5
     # via pandas
 pandas==2.2.3
-    # via energyid-py
+    # via energyid
 propcache==0.3.1
     # via
     #   aiohttp

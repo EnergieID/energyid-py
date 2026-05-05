@@ -5,7 +5,7 @@ Async Python client for the [EnergyID API](https://api.energyid.eu).
 ## Installation
 
 ```bash
-pip install energyid-py
+pip install EnergyID
 ```
 
 ## Quick Start

@@ -1,5 +1,5 @@
 [project]
-name = "energyid-py"
+name = "EnergyID"
 version = "1.0.0"
 description = "Python interface for the EnergyID API"
 authors = [
