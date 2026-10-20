@@ -3,7 +3,7 @@
 -e .
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.11.18
+aiohttp==3.14.4
     # via energyid
 aiosignal==1.3.2
     # via aiohttp
