@@ -39,3 +39,9 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv]
+# Supply-chain guard: only resolve PyPI files uploaded at least 7 days ago, so a
+# malicious release is usually yanked before we can pick it up. None of our own
+# packages are dependencies here, so nothing is exempt.
+exclude-newer = "7 days"
