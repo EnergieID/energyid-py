@@ -35,7 +35,7 @@ repos:
       files: \.ipynb$
 - repo: https://github.com/astral-sh/uv-pre-commit
   # uv version.
-  rev: 0.6.16
+  rev: 0.12.8
   hooks:
   -   id: uv-export
       args:
